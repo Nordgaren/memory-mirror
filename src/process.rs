@@ -4,7 +4,7 @@ use std::mem::size_of;
 use std::ffi::{c_void, CStr};
 
 use windows::Win32::Foundation::HANDLE;
-use sysinfo::{ProcessExt, Pid, System, SystemExt, PidExt};
+use sysinfo::{ProcessExt, System, SystemExt, PidExt};
 use windows::Win32::System::Diagnostics::Debug::ReadProcessMemory;
 use windows::Win32::System::Memory::{VirtualQueryEx, MEMORY_BASIC_INFORMATION, MEM_FREE, VIRTUAL_ALLOCATION_TYPE};
 use windows::Win32::System::Threading::{OpenProcess, OpenThread, SuspendThread, ResumeThread, PROCESS_QUERY_INFORMATION, PROCESS_VM_READ, THREAD_SUSPEND_RESUME};

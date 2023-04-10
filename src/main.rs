@@ -1,10 +1,8 @@
-use sysinfo::Pid;
 use std::env;
 use std::fs::File;
 use std::io::Write;
 use std::mem::size_of;
 use std::ops::Range;
-use std::path::PathBuf;
 use indicatif::ProgressIterator;
 use windows::Win32::Foundation::HANDLE;
 use windows::Win32::System::Memory::{MEM_FREE};
@@ -14,7 +12,6 @@ use windows::Win32::System::Diagnostics::Debug::{IMAGE_NT_HEADERS64, IMAGE_SECTI
 mod process;
 
 use crate::process::{
-    DumpableProcess,
     get_dumpable_processes,
     enumerate_memory_regions,
     open_process,
