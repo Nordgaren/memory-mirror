@@ -7,11 +7,12 @@ into Ghidra for analysis.
 ## How do I use this?
 
 ### Dumping memory
-- Start the process that you want to dump
-- Start this tool
-- Select the procress you want to dump in the tool
-- Select an output directory for the dump to be written to by clicking "Select output directory"
-- Click "Dump process memory"
+You'll want to invoke memory_mirror like so:
+```shell
+$ ./memory_mirror.exe <pid> <output directory>
+```
+
+This will write dumped memory to `<output directory>`.
 
 ### Merge PE headers and section regions
 After this is done it will have written the memory regions that it was able to acquire to disk. It will write
@@ -39,7 +40,7 @@ Once analysis is all done on the modules you can once more use Ghidra's File > A
 If the bases are specified properly you should now see that pointers to heap data start actually pointing somewhere :-)
 
 ## How does it work under the hood?
-When you hit "Dump process memory", it enumerates all process threads, freezes them, dumps all memory regions that are
+When you invoke this utility, it enumerates all process threads, freezes them, dumps all memory regions that are
 not in a `MEM_FREE` state, corrects the `PointerToRawData` and `RawDataSize` fields on found section headers such that
 Ghidra can use them to locate the sections again, and finally unfreezes the threads again.
 

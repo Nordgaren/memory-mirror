@@ -17,7 +17,7 @@ pub(crate) fn get_dumpable_processes() -> Vec<DumpableProcess> {
 
     let mut processes = system.processes()
         .iter()
-        .map(|x| DumpableProcess { pid: *x.0, name: x.1.name().to_string() })
+        .map(|x| DumpableProcess { pid: x.0.as_u32(), name: x.1.name().to_string() })
         .collect::<Vec<DumpableProcess>>();
 
     // Sort it backwards
@@ -26,9 +26,9 @@ pub(crate) fn get_dumpable_processes() -> Vec<DumpableProcess> {
     processes
 }
 
-#[derive(Debug, Clone, Eq)]
+#[derive(Debug, Clone)]
 pub(crate) struct DumpableProcess {
-    pub pid: Pid,
+    pub pid: u32,
     pub name: String,
 }
 
@@ -38,28 +38,22 @@ impl fmt::Display for DumpableProcess {
     }
 }
 
-impl PartialEq for DumpableProcess {
-    fn eq(&self, other: &Self) -> bool {
-        self.pid == other.pid
-    }
-}
-
-pub(crate) unsafe fn open_process(process: Pid) -> windows::core::Result<HANDLE> {
+pub(crate) unsafe fn open_process(process: u32) -> windows::core::Result<HANDLE> {
     OpenProcess(
         PROCESS_QUERY_INFORMATION | PROCESS_VM_READ,
         false,
-        process.as_u32()
+        process,
     )
 }
 
-pub(crate) unsafe fn snapshot_process(process: Pid) -> windows::core::Result<HANDLE> {
+pub(crate) unsafe fn snapshot_process(process: u32) -> windows::core::Result<HANDLE> {
     CreateToolhelp32Snapshot(
         TH32CS_SNAPTHREAD | TH32CS_SNAPMODULE,
-        process.as_u32()
+        process,
     )
 }
 
-pub(crate) unsafe fn freeze_process(snapshot: HANDLE, process: Pid) -> Vec<HANDLE> {
+pub(crate) unsafe fn freeze_process(snapshot: HANDLE, process: u32) -> Vec<HANDLE> {
     let mut thread_entry = THREADENTRY32::default();
     thread_entry.dwSize = size_of::<THREADENTRY32>() as u32;
 
@@ -69,7 +63,7 @@ pub(crate) unsafe fn freeze_process(snapshot: HANDLE, process: Pid) -> Vec<HANDL
 
     let mut handles = vec![];
     loop {
-        if thread_entry.th32OwnerProcessID == process.as_u32() {
+        if thread_entry.th32OwnerProcessID == process {
             let thread_handle = OpenThread(
                 THREAD_SUSPEND_RESUME,
                 false,
@@ -95,7 +89,7 @@ pub(crate) unsafe fn resume_threads(threads: Vec<HANDLE>) {
     }
 }
 
-pub(crate) unsafe fn enumerate_modules(snapshot: HANDLE, process: Pid) -> Vec<ProcessModule> {
+pub(crate) unsafe fn enumerate_modules(snapshot: HANDLE) -> Vec<ProcessModule> {
     let mut current_entry = MODULEENTRY32::default();
     current_entry.dwSize = size_of::<MODULEENTRY32>() as u32;
 
