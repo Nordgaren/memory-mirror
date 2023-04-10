@@ -1,18 +1,14 @@
 use sysinfo::Pid;
+use std::env;
 use std::fs::File;
 use std::io::Write;
 use std::mem::size_of;
 use std::ops::Range;
-use rfd::FileDialog;
-use image::ImageFormat;
 use std::path::PathBuf;
-use iced::window::icon::Icon;
+use indicatif::ProgressIterator;
 use windows::Win32::Foundation::HANDLE;
-use iced::window::Settings as WindowSettings;
 use windows::Win32::System::Memory::{MEM_FREE};
 use windows::Win32::System::SystemServices::IMAGE_DOS_HEADER;
-use iced::widget::{button, column, pick_list, vertical_space, text};
-use iced::{Application, Command, Element, Settings, Theme, Length, executor};
 use windows::Win32::System::Diagnostics::Debug::{IMAGE_NT_HEADERS64, IMAGE_SECTION_HEADER};
 
 mod process;
@@ -31,126 +27,42 @@ use crate::process::{
     read_memory
 };
 
-pub fn main() -> iced::Result {
-    let icon = Icon::from_file_data(include_bytes!("icon.png"), Some(ImageFormat::Png)).unwrap();
+fn main() {
+    let args: Vec<String> = env::args().collect();
 
-    DumperGUI::run(Settings {
-        window: WindowSettings {
-            size: (300, 400),
-            resizable: false,
-            icon: Some(icon),
-            ..WindowSettings::default()
-        },
-        ..Settings::default()
-    })
-}
+    if args.len() != 3 {
+        println!("Invocation was not correct. Example of proper invocation:");
+        println!("./memory_mirror.exe <pid> <output path>");
 
-struct DumperGUI {
-    selected_process: Option<DumpableProcess>,
-    selected_output_path: Option<PathBuf>,
-}
-
-#[derive(Debug, Clone)]
-enum Message {
-    SelectedProcessChanged(DumpableProcess),
-    SelectPathClicked,
-    DumpProcessClicked,
-}
-
-impl Application for DumperGUI {
-    type Executor = executor::Default;
-    type Flags = ();
-    type Message = Message;
-    type Theme = Theme;
-
-    fn new(_flags: ()) -> (Self, Command<Self::Message>) {
-        (Self {
-            selected_process: None,
-            selected_output_path: None,
-        }, Command::none())
+        return;
     }
 
-    fn title(&self) -> String {
-        String::from("Memory Mirror")
-    }
+    let process_id = &args[1].parse::<u32>().expect("Process ID was not an int");
+    let output_directory = &args[2];
 
-    fn update(&mut self, message: Message) -> Command<Message> {
-        match message {
-            Message::SelectedProcessChanged(process) => {
-                self.selected_process = Some(process);
-            },
-            Message::SelectPathClicked => {
-                self.selected_output_path = prompt_output_path();
-            },
-            Message::DumpProcessClicked => unsafe {
-                dump(
-                    self.selected_output_path.as_ref().unwrap().to_str().unwrap().to_string(),
-                    self.selected_process.as_ref().unwrap().pid
-                );
-            },
-        }
+    let process = get_dumpable_processes().into_iter()
+        .find(|p| p.pid == *process_id)
+        .expect("Could not find a process with specified ID");
 
-        Command::none()
-    }
+    println!("Dumping process {}...", process);
 
-    fn view(&self) -> Element<Message> {
-        let game_processes = get_dumpable_processes();
-
-        let mut dump_process_button = button("Dump process memory");
-        if self.selected_process.is_some() && self.selected_output_path.is_some() {
-            dump_process_button = dump_process_button
-                .on_press(Message::DumpProcessClicked);
-        }
-
-        let output_path_text = match self.selected_output_path.as_ref() {
-            Some(_) => String::from("Output path selected"),
-            None => String::from("No output path selected"),
-        };
-
-        column![
-            "Process",
-            pick_list(game_processes, self.selected_process.clone(), move |x| {
-                Message::SelectedProcessChanged(x)
-            })
-                .placeholder("Select the running process you want to dump the memory for")
-                .width(Length::Fill),
-
-            vertical_space(20),
-            button("Select output directory")
-                .width(Length::Fill)
-                .on_press(Message::SelectPathClicked),
-
-            vertical_space(5),
-            text(output_path_text),
-
-            vertical_space(20),
-            dump_process_button.width(Length::Fill),
-        ]
-            .padding(20)
-            .into()
-    }
+    unsafe { dump(output_directory.clone(), process.pid); }
 }
 
-fn prompt_output_path() -> Option<PathBuf> {
-    FileDialog::new()
-        .set_directory("/")
-        .pick_folder()
-}
-
-unsafe fn dump(path: String, pid: Pid) {
+unsafe fn dump(path: String, pid: u32) {
     let snapshot = snapshot_process(pid).unwrap();
     let frozen_threads = freeze_process(snapshot, pid);
 
     let process_handle = open_process(pid).unwrap();
 
-    let modules = enumerate_modules(snapshot, pid);
+    let modules = enumerate_modules(snapshot);
     let regions = enumerate_memory_regions(process_handle);
 
     let readable_regions = regions.into_iter()
         .filter(|m| m.state != MEM_FREE)
         .collect::<Vec<MemoryRegion>>();
 
-    for region in readable_regions {
+    for region in readable_regions.into_iter().progress() {
         let associated_module = modules.iter()
             .find(|m| m.range.contains(&region.range.start));
 
