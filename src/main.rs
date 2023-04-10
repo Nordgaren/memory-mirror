@@ -65,10 +65,7 @@ impl Application for DumperGUI {
 
     fn new(_flags: ()) -> (Self, Command<Self::Message>) {
         (Self {
-            selected_process: get_dumpable_processes()
-                .iter()
-                .find(|p| p.name.contains("eldenring"))
-                .map(|x| x.clone()),
+            selected_process: None,
             selected_output_path: None,
         }, Command::none())
     }
