@@ -6,12 +6,13 @@ use std::io::Write;
 use std::mem::size_of;
 use std::ops::Range;
 use indicatif::ProgressIterator;
-use windows::Win32::Foundation::HANDLE;
-use windows::Win32::System::Memory::{MEM_FREE};
-use windows::Win32::System::SystemServices::IMAGE_DOS_HEADER;
-use windows::Win32::System::Diagnostics::Debug::{IMAGE_NT_HEADERS64, IMAGE_SECTION_HEADER};
+use crate::windows::api::GetLastError;
+use crate::windows::consts::MEM_FREE;
+use crate::windows::structs::IMAGE_DOS_HEADER;
+use crate::windows::structs::{IMAGE_NT_HEADERS, IMAGE_SECTION_HEADER};
 
 mod process;
+mod windows;
 
 use crate::process::{
     get_dumpable_processes,
@@ -49,7 +50,14 @@ fn main() {
 }
 
 unsafe fn dump(path: String, pid: u32) {
-    let snapshot = snapshot_process(pid).unwrap();
+    let snapshot = match snapshot_process(pid) {
+        Ok(e) => e,
+        Err(_) => {
+            let e = GetLastError();
+            println!("Error: {}", e);
+            panic!("Last Error: {}", GetLastError())  ;
+    },
+    };
     let frozen_threads = freeze_process(snapshot, pid);
 
     let process_handle = open_process(pid).unwrap();
@@ -85,7 +93,7 @@ unsafe fn dump(path: String, pid: u32) {
 
 unsafe fn dump_module_region(
     path: String,
-    process: HANDLE,
+    process: usize,
     module: &ProcessModule,
     region: MemoryRegion
 ) {
@@ -98,7 +106,7 @@ unsafe fn dump_module_region(
 
 unsafe fn dump_raw_region(
     path: String,
-    process: HANDLE,
+    process: usize,
     region: MemoryRegion
 ) {
     if let Some(buffer) = read_memory(process, &region.range) {
@@ -107,7 +115,7 @@ unsafe fn dump_raw_region(
     }
 }
 
-fn build_filename(label: &str, range: &Range<isize>) -> String {
+fn build_filename(label: &str, range: &Range<usize>) -> String {
     format!("{:x}-{:x}-{}.dump", range.start, range.end - range.start, label)
 }
 
@@ -124,7 +132,7 @@ unsafe fn patch_section_headers(buffer: Vec<u8>) -> Vec<u8> {
 
     // Read the NT header to figure out how sections we have and how much RVA's + sizes so we
     // can determine the offset to the section headers;
-    let nt_header = *((buffer_ptr + nt_header_offset) as *const IMAGE_NT_HEADERS64);
+    let nt_header = &*((buffer_ptr + nt_header_offset) as *const IMAGE_NT_HEADERS);
     let section_count = nt_header.FileHeader.NumberOfSections;
     let rva_count = nt_header.OptionalHeader.NumberOfRvaAndSizes;
 
@@ -132,13 +140,13 @@ unsafe fn patch_section_headers(buffer: Vec<u8>) -> Vec<u8> {
     // be different in reality so we take care of the situation where it's less by manually
     // adjusting the offset.
     let section_base = nt_header_offset
-        + size_of::<IMAGE_NT_HEADERS64>()
+        + size_of::<IMAGE_NT_HEADERS>()
         + ((rva_count - 16) * 8) as usize;
 
     let section_header_size = size_of::<IMAGE_SECTION_HEADER>();
     for i in 0..section_count {
         let section_header_offset = section_base + section_header_size * i as usize;
-        let mut section_header = (buffer_ptr + section_header_offset) as *mut IMAGE_SECTION_HEADER;
+        let section_header = (buffer_ptr + section_header_offset) as *mut IMAGE_SECTION_HEADER;
 
         // Since we're dumping from memory we need to correct the PointerToRawData and SizeOfRawData
         // such that analysis tools can locate the sections again.
