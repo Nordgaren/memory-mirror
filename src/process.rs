@@ -178,7 +178,7 @@ pub(crate) unsafe fn enumerate_memory_regions(process: usize) -> Vec<MemoryRegio
 
 
         // This will cause infinite loops when `current_address` gets back into a `None` state.
-        if !current_address.is_null() && current_address== next_address {
+        if current_address == next_address {
             break;
         }
 

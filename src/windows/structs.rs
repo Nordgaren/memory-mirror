@@ -137,7 +137,7 @@ pub struct MEMORY_BASIC_INFORMATION {
     pub BaseAddress: usize,
     pub AllocationBase: usize,
     pub AllocationProtect: u32,
-    #[cfg(target_arch = "x86")]
+    #[cfg(target_arch = "x86_64")]
     pub PartitionId: u16,
     pub RegionSize: usize,
     pub State: u32,
