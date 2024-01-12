@@ -145,7 +145,7 @@ pub(crate) unsafe fn enumerate_modules(process: usize, snapshot: usize) -> Vec<P
 
         // grab the size of the PE in memory, and set the range end to that.
         let buffer = read_memory(process, &process_module.range).expect("Could not read process memory.");
-        let pe = PE::from_slice_assume_mapped(&buffer[..]).expect("Could not parse PE header.");
+        let pe = PE::from_slice_assume_mapped(&buffer[..]);
         process_module.range.end = current_entry.hModule + pe.nt_headers().optional_header().size_of_image() as usize;
 
         results.push(process_module);

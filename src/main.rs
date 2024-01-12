@@ -119,8 +119,16 @@ fn dump_buffer(path: &str, buffer: Vec<u8>) {
     file.write_all(buffer.as_slice()).unwrap();
 }
 
-unsafe fn patch_section_headers(buffer: Vec<u8>) -> Vec<u8> {
-    let pe = PE::from_slice(&buffer[..]).expect("Could not read buffer as PE.");
+unsafe fn patch_section_headers(mut buffer: Vec<u8>) -> Vec<u8> {
+    let pe = match PE::from_slice(&buffer[..]) {
+        Ok(p) => p,
+        Err(_) => {
+            println!("Warn: Could not validate PE. Patching header and assuming slice is a valid header.");
+            buffer[0] = b'M';
+            buffer[1] = b'Z';
+            PE::from_slice_unchecked(&buffer[..])
+        }
+    };
 
     let sections = pe.section_headers_mut();
     for sections in sections {
