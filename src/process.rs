@@ -3,6 +3,7 @@ use std::ops::Range;
 use std::mem::size_of;
 use std::ffi::{c_void, CStr};
 use std::io::{Error, ErrorKind};
+use pe_util::PE;
 
 use sysinfo::{ProcessExt, System, SystemExt, PidExt};
 use crate::windows::consts::{MEM_FREE, PROCESS_QUERY_INFORMATION, PROCESS_VM_READ, THREAD_SUSPEND_RESUME, TH32CS_SNAPTHREAD, TH32CS_SNAPMODULE, INVALID_HANDLE_VALUE};
@@ -47,11 +48,12 @@ pub(crate) unsafe fn open_process(process: u32) -> std::io::Result<usize> {
 
     if process_id == INVALID_HANDLE_VALUE {
         let last_error = GetLastError();
-        return Err(Error::new(ErrorKind::AddrInUse, format!("Could not open process {process}. Invalid handle: {process_id}. LastError: 0x{last_error:X}")))
+        return Err(Error::new(ErrorKind::AddrInUse, format!("Could not open process {process}. Invalid handle: {process_id}. LastError: 0x{last_error:X}")));
     }
 
     Ok(process_id)
 }
+
 pub(crate) unsafe fn open_thread(access: u32, inherit: bool, thread: u32) -> std::io::Result<usize> {
     let thread_id = OpenThread(
         access,
@@ -62,7 +64,7 @@ pub(crate) unsafe fn open_thread(access: u32, inherit: bool, thread: u32) -> std
 
     if thread_id == 0 {
         let last_error = GetLastError();
-        return Err(Error::new(ErrorKind::AddrInUse, format!("Could not open process {thread}. Invalid handle: {thread_id}. LastError: 0x{last_error:X}")))
+        return Err(Error::new(ErrorKind::AddrInUse, format!("Could not open process {thread}. Invalid handle: {thread_id}. LastError: 0x{last_error:X}")));
     }
 
     Ok(thread_id)
@@ -77,7 +79,7 @@ pub(crate) unsafe fn snapshot_process(process: u32) -> std::io::Result<usize> {
 
     if snapshot_handle == INVALID_HANDLE_VALUE {
         let last_error = GetLastError();
-        return Err(Error::new(ErrorKind::AddrInUse, format!("Could not open snapshot for process {process}. Invalid handle: {snapshot_handle}. LastError: 0x{last_error:X}")))
+        return Err(Error::new(ErrorKind::AddrInUse, format!("Could not open snapshot for process {process}. Invalid handle: {snapshot_handle}. LastError: 0x{last_error:X}")));
     }
 
     Ok(snapshot_handle)
@@ -118,7 +120,7 @@ pub(crate) unsafe fn resume_threads(threads: Vec<usize>) {
     }
 }
 
-pub(crate) unsafe fn enumerate_modules(snapshot: usize) -> Vec<ProcessModule> {
+pub(crate) unsafe fn enumerate_modules(process: usize, snapshot: usize) -> Vec<ProcessModule> {
     let mut current_entry = MODULEENTRY32::default();
 
     if !Module32First(snapshot, &mut current_entry) {
@@ -133,13 +135,20 @@ pub(crate) unsafe fn enumerate_modules(snapshot: usize) -> Vec<ProcessModule> {
             .unwrap()
             .to_string();
 
-        results.push(ProcessModule {
+        let mut process_module = ProcessModule {
             name: module_name,
             range: Range {
                 start: current_entry.hModule,
                 end: current_entry.hModule + current_entry.dwSize as usize,
             },
-        });
+        };
+
+        // grab the size of the PE in memory, and set the range end to that.
+        let buffer = read_memory(process, &process_module.range).expect("Could not read process memory.");
+        let pe = PE::from_slice_assume_mapped(&buffer[..]).expect("Could not parse PE header.");
+        process_module.range.end = current_entry.hModule + pe.nt_headers().optional_header().size_of_image() as usize;
+
+        results.push(process_module);
 
         if !Module32Next(snapshot, &mut current_entry) {
             break;
@@ -176,7 +185,6 @@ pub(crate) unsafe fn enumerate_memory_regions(process: usize) -> Vec<MemoryRegio
         }
 
 
-
         // This will cause infinite loops when `current_address` gets back into a `None` state.
         if current_address == next_address {
             break;
@@ -190,7 +198,7 @@ pub(crate) unsafe fn enumerate_memory_regions(process: usize) -> Vec<MemoryRegio
 
 pub(crate) unsafe fn read_memory(process: usize, range: &Range<usize>) -> Option<Vec<u8>> {
     let size = range.end - range.start;
-    let mut buffer = vec![0 ; size];
+    let mut buffer = vec![0; size];
     let mut bytes_read = 0;
 
     let success = ReadProcessMemory(

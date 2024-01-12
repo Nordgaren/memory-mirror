@@ -6,6 +6,7 @@ use std::io::Write;
 use std::mem::size_of;
 use std::ops::Range;
 use indicatif::ProgressIterator;
+use pe_util::PE;
 use crate::windows::api::GetLastError;
 use crate::windows::consts::MEM_FREE;
 use crate::windows::structs::IMAGE_DOS_HEADER;
@@ -62,44 +63,41 @@ unsafe fn dump(path: String, pid: u32) {
 
     let process_handle = open_process(pid).unwrap();
 
-    let modules = enumerate_modules(snapshot);
+    let modules = enumerate_modules(process_handle, snapshot);
     let regions = enumerate_memory_regions(process_handle);
 
     let readable_regions = regions.into_iter()
         .filter(|m| m.state != MEM_FREE)
+        .filter(|m| !modules.iter().any(|module| module.range.contains(&m.range.end)))
         .collect::<Vec<MemoryRegion>>();
 
-    for region in readable_regions.into_iter().progress() {
-        let associated_module = modules.iter()
-            .find(|m| m.range.contains(&region.range.start));
+    for module in modules {
+        dump_module(
+            path.clone(),
+            process_handle,
+            &module,
+        )
+    }
 
-        match associated_module {
-            Some(module) => dump_module_region(
-                path.clone(),
-                process_handle,
-                module,
-                region,
-            ),
-            None => dump_raw_region(
-                path.clone(),
-                process_handle,
-                region,
-            ),
-        }
+    for region in readable_regions.into_iter().progress() {
+        dump_raw_region(
+            path.clone(),
+            process_handle,
+            region,
+        );
     }
 
     resume_threads(frozen_threads);
 }
 
-unsafe fn dump_module_region(
+unsafe fn dump_module(
     path: String,
     process: usize,
     module: &ProcessModule,
-    region: MemoryRegion
 ) {
-    if let Some(buffer) = read_memory(process, &region.range) {
+    if let Some(buffer) = read_memory(process, &module.range) {
         let buffer = patch_section_headers(buffer);
-        let filename = build_filename(module.name.as_str(), &region.range);
+        let filename = build_filename(module.name.as_str(), &module.range);
         dump_buffer(format!("{}/{}", path, filename).as_str(), buffer);
     }
 }
