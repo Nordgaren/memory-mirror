@@ -38,51 +38,57 @@ impl fmt::Display for DumpableProcess {
     }
 }
 
-pub(crate) unsafe fn open_process(process: u32) -> std::io::Result<usize> {
-    let process_id = OpenProcess(
-        PROCESS_QUERY_INFORMATION | PROCESS_VM_READ,
-        false,
-        process,
-    );
+pub(crate) fn open_process(process: u32) -> std::io::Result<usize> {
+    unsafe {
+        let process_id = OpenProcess(
+            PROCESS_QUERY_INFORMATION | PROCESS_VM_READ,
+            false,
+            process,
+        );
 
 
-    if process_id == INVALID_HANDLE_VALUE {
-        let last_error = GetLastError();
-        return Err(Error::new(ErrorKind::AddrInUse, format!("Could not open process {process}. Invalid handle: {process_id}. LastError: 0x{last_error:X}")));
+        if process_id == INVALID_HANDLE_VALUE {
+            let last_error = GetLastError();
+            return Err(Error::new(ErrorKind::AddrInUse, format!("Could not open process {process}. Invalid handle: {process_id}. LastError: 0x{last_error:X}")));
+        }
+
+        Ok(process_id)
     }
-
-    Ok(process_id)
 }
 
-pub(crate) unsafe fn open_thread(access: u32, inherit: bool, thread: u32) -> std::io::Result<usize> {
-    let thread_id = OpenThread(
-        access,
-        inherit,
-        thread,
-    );
+pub(crate) fn open_thread(access: u32, inherit: bool, thread: u32) -> std::io::Result<usize> {
+    unsafe {
+        let thread_id = OpenThread(
+            access,
+            inherit,
+            thread,
+        );
 
 
-    if thread_id == 0 {
-        let last_error = GetLastError();
-        return Err(Error::new(ErrorKind::AddrInUse, format!("Could not open process {thread}. Invalid handle: {thread_id}. LastError: 0x{last_error:X}")));
+        if thread_id == 0 {
+            let last_error = GetLastError();
+            return Err(Error::new(ErrorKind::AddrInUse, format!("Could not open process {thread}. Invalid handle: {thread_id}. LastError: 0x{last_error:X}")));
+        }
+
+        Ok(thread_id)
     }
-
-    Ok(thread_id)
 }
 
 
-pub(crate) unsafe fn snapshot_process(process: u32) -> std::io::Result<usize> {
-    let snapshot_handle = CreateToolhelp32Snapshot(
-        TH32CS_SNAPTHREAD | TH32CS_SNAPMODULE,
-        process,
-    );
+pub(crate) fn snapshot_process(process: u32) -> std::io::Result<usize> {
+    unsafe {
+        let snapshot_handle = CreateToolhelp32Snapshot(
+            TH32CS_SNAPTHREAD | TH32CS_SNAPMODULE,
+            process,
+        );
 
-    if snapshot_handle == INVALID_HANDLE_VALUE {
-        let last_error = GetLastError();
-        return Err(Error::new(ErrorKind::AddrInUse, format!("Could not open snapshot for process {process}. Invalid handle: {snapshot_handle}. LastError: 0x{last_error:X}")));
+        if snapshot_handle == INVALID_HANDLE_VALUE {
+            let last_error = GetLastError();
+            return Err(Error::new(ErrorKind::AddrInUse, format!("Could not open snapshot for process {process}. Invalid handle: {snapshot_handle}. LastError: 0x{last_error:X}")));
+        }
+
+        Ok(snapshot_handle)
     }
-
-    Ok(snapshot_handle)
 }
 
 pub(crate) unsafe fn freeze_process(snapshot: usize, process: u32) -> Vec<usize> {

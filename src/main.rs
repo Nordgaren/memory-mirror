@@ -1,16 +1,16 @@
-#![windows_subsystem = "windows"]
 
-use std::env;
+use std::fs;
 use std::fs::File;
 use std::io::Write;
 use std::ops::Range;
-use indicatif::ProgressIterator;
+use clap::Parser;
 use pe_util::PE;
 use crate::windows::api::GetLastError;
 use crate::windows::consts::MEM_FREE;
-
+use crate::args::{Args, DumpType};
 mod process;
 mod windows;
+mod args;
 
 use crate::process::{
     get_dumpable_processes,
@@ -26,28 +26,35 @@ use crate::process::{
 };
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
+    let args = Args::parse();
 
-    if args.len() != 3 {
-        println!("Invocation was not correct. Example of proper invocation:");
-        println!("./memory_mirror.exe <pid> <output path>");
+    match args.command {
+        DumpType::Name { name } => {
+            let name = name.to_lowercase();
+            let processes = get_dumpable_processes().into_iter()
+                .filter(|p| p.name.to_lowercase() == name);
 
-        return;
+            for process in processes {
+                println!("Dumping process {}...", process);
+                let output_dir = &format!("{}/{}", args.path, process.pid);
+                fs::create_dir(&output_dir).expect("Could not create directory for process");
+
+                unsafe { dump(&output_dir, process.pid); }
+            }
+        }
+        DumpType::Pid { pid } => {
+            let process = get_dumpable_processes().into_iter()
+                .find(|p| p.pid == pid)
+                .expect("Could not find a process with specified ID");
+
+            println!("Dumping process {}...", process);
+
+            unsafe { dump(&args.path, process.pid); }
+        }
     }
-
-    let process_id = &args[1].parse::<u32>().expect("Process ID was not an int");
-    let output_directory = &args[2];
-
-    let process = get_dumpable_processes().into_iter()
-        .find(|p| p.pid == *process_id)
-        .expect("Could not find a process with specified ID");
-
-    println!("Dumping process {}...", process);
-
-    unsafe { dump(output_directory.clone(), process.pid); }
 }
 
-unsafe fn dump(path: String, pid: u32) {
+unsafe fn dump(path: &str, pid: u32) {
     let snapshot = match snapshot_process(pid) {
         Ok(e) => e,
         Err(_) => {
@@ -70,15 +77,15 @@ unsafe fn dump(path: String, pid: u32) {
 
     for module in modules {
         dump_module(
-            path.clone(),
+            path,
             process_handle,
             &module,
         )
     }
 
-    for region in readable_regions.into_iter().progress() {
+    for region in readable_regions.into_iter() {
         dump_raw_region(
-            path.clone(),
+            path,
             process_handle,
             region,
         );
@@ -88,25 +95,25 @@ unsafe fn dump(path: String, pid: u32) {
 }
 
 unsafe fn dump_module(
-    path: String,
+    path: &str,
     process: usize,
     module: &ProcessModule,
 ) {
     if let Some(buffer) = read_memory(process, &module.range) {
         let buffer = patch_section_headers(buffer);
         let filename = build_filename(module.name.as_str(), &module.range);
-        dump_buffer(format!("{}/{}", path, filename).as_str(), buffer);
+        dump_buffer(&format!("{}/{}", path, filename), buffer);
     }
 }
 
 unsafe fn dump_raw_region(
-    path: String,
+    path: &str,
     process: usize,
     region: MemoryRegion
 ) {
     if let Some(buffer) = read_memory(process, &region.range) {
         let filename = build_filename("UNK", &region.range);
-        dump_buffer(format!("{}/{}", path, filename).as_str(), buffer);
+        dump_buffer(&format!("{}/{}", path, filename), buffer);
     }
 }
 
