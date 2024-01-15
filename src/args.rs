@@ -10,7 +10,6 @@ pub struct Args {
     /// Output folder
     #[arg(short, long, default_value = "")]
     pub(crate) path: String,
-
 }
 
 #[derive(Subcommand, Debug)]
