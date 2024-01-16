@@ -3,11 +3,11 @@ use clap::{Parser, Subcommand};
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 pub struct Args {
-    /// Name of the person to greet
+    /// Type of dump to perform.
     #[command(subcommand)]
     pub(crate) command: DumpType,
 
-    /// Output folder
+    /// Output folder.
     #[arg(short, long, default_value = "")]
     pub(crate) path: String,
 }
