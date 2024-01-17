@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 
-use crate::windows::structs::{THREADENTRY32, MEMORY_BASIC_INFORMATION, MODULEENTRY32};
+use crate::windows::structs::{MEMORY_BASIC_INFORMATION, MODULEENTRY32, THREADENTRY32};
 use std::ffi::c_void;
 
 #[link(name = "kernel32", kind = "raw-dylib")]
@@ -23,9 +23,9 @@ extern "system" {
     pub fn Thread32First(hSnapshot: usize, lpte: &mut THREADENTRY32) -> bool;
     pub fn Thread32Next(hSnapshot: usize, lpte: &mut THREADENTRY32) -> bool;
     pub fn VirtualQueryEx(
-              hProcess: usize,
-              lpAddress: *const c_void,
-              lpBuffer: *mut MEMORY_BASIC_INFORMATION,
-              dwLength: usize
+        hProcess: usize,
+        lpAddress: *const c_void,
+        lpBuffer: *mut MEMORY_BASIC_INFORMATION,
+        dwLength: usize,
     ) -> usize;
 }

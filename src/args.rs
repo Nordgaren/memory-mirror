@@ -15,11 +15,7 @@ pub struct Args {
 #[derive(Subcommand, Debug)]
 pub enum DumpType {
     /// Dump all processes with this name.
-    Name {
-        name: String,
-    },
+    Name { name: String },
     /// Dump specific process by pid.
-    Pid {
-        pid: u32,
-    },
+    Pid { pid: u32 },
 }

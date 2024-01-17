@@ -1,23 +1,33 @@
-use std::fmt;
-use std::ops::Range;
-use std::mem::size_of;
-use std::ffi::{c_void, CStr};
-use std::io::{Error, ErrorKind};
 use pe_util::PE;
+use std::ffi::{c_void, CStr};
+use std::fmt;
+use std::io::{Error, ErrorKind};
+use std::mem::size_of;
+use std::ops::Range;
 
-use sysinfo::{ProcessExt, System, SystemExt, PidExt};
-use crate::windows::consts::{MEM_FREE, PROCESS_QUERY_INFORMATION, PROCESS_VM_READ, THREAD_SUSPEND_RESUME, TH32CS_SNAPTHREAD, TH32CS_SNAPMODULE, INVALID_HANDLE_VALUE};
-use crate::windows::api::{OpenProcess, OpenThread, SuspendThread, ReadProcessMemory, ResumeThread, VirtualQueryEx, CreateToolhelp32Snapshot, Thread32First, Thread32Next, Module32First, Module32Next, GetLastError};
-use crate::windows::structs::{THREADENTRY32, MEMORY_BASIC_INFORMATION, MODULEENTRY32};
+use crate::windows::api::{
+    CreateToolhelp32Snapshot, GetLastError, Module32First, Module32Next, OpenProcess, OpenThread,
+    ReadProcessMemory, ResumeThread, SuspendThread, Thread32First, Thread32Next, VirtualQueryEx,
+};
+use crate::windows::consts::{
+    INVALID_HANDLE_VALUE, MEM_FREE, PROCESS_QUERY_INFORMATION, PROCESS_VM_READ, TH32CS_SNAPMODULE,
+    TH32CS_SNAPTHREAD, THREAD_SUSPEND_RESUME,
+};
+use crate::windows::structs::{MEMORY_BASIC_INFORMATION, MODULEENTRY32, THREADENTRY32};
+use sysinfo::{PidExt, ProcessExt, System, SystemExt};
 
 /// Retrieves a list of running process that we can dump
 pub(crate) fn get_dumpable_processes() -> Vec<DumpableProcess> {
     let mut system = System::new();
     system.refresh_processes();
 
-    let mut processes = system.processes()
+    let mut processes = system
+        .processes()
         .iter()
-        .map(|x| DumpableProcess { pid: x.0.as_u32(), name: x.1.name().to_string() })
+        .map(|x| DumpableProcess {
+            pid: x.0.as_u32(),
+            name: x.1.name().to_string(),
+        })
         .collect::<Vec<DumpableProcess>>();
 
     // Sort it backwards
@@ -40,12 +50,7 @@ impl fmt::Display for DumpableProcess {
 
 pub(crate) fn open_process(process: u32) -> std::io::Result<usize> {
     unsafe {
-        let process_id = OpenProcess(
-            PROCESS_QUERY_INFORMATION | PROCESS_VM_READ,
-            false,
-            process,
-        );
-
+        let process_id = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, false, process);
 
         if process_id == INVALID_HANDLE_VALUE {
             let last_error = GetLastError();
@@ -58,12 +63,7 @@ pub(crate) fn open_process(process: u32) -> std::io::Result<usize> {
 
 pub(crate) fn open_thread(access: u32, inherit: bool, thread: u32) -> std::io::Result<usize> {
     unsafe {
-        let thread_id = OpenThread(
-            access,
-            inherit,
-            thread,
-        );
-
+        let thread_id = OpenThread(access, inherit, thread);
 
         if thread_id == 0 {
             let last_error = GetLastError();
@@ -74,13 +74,10 @@ pub(crate) fn open_thread(access: u32, inherit: bool, thread: u32) -> std::io::R
     }
 }
 
-
 pub(crate) fn snapshot_process(process: u32) -> std::io::Result<usize> {
     unsafe {
-        let snapshot_handle = CreateToolhelp32Snapshot(
-            TH32CS_SNAPTHREAD | TH32CS_SNAPMODULE,
-            process,
-        );
+        let snapshot_handle =
+            CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD | TH32CS_SNAPMODULE, process);
 
         if snapshot_handle == INVALID_HANDLE_VALUE {
             let last_error = GetLastError();
@@ -101,11 +98,8 @@ pub(crate) unsafe fn freeze_process(snapshot: usize, process: u32) -> Vec<usize>
     let mut handles = vec![];
     loop {
         if thread_entry.th32OwnerProcessID == process {
-            let thread_handle = open_thread(
-                THREAD_SUSPEND_RESUME,
-                false,
-                thread_entry.th32ThreadID,
-            );
+            let thread_handle =
+                open_thread(THREAD_SUSPEND_RESUME, false, thread_entry.th32ThreadID);
 
             if let Ok(handle) = thread_handle {
                 handles.push(handle);
@@ -150,9 +144,11 @@ pub(crate) unsafe fn enumerate_modules(process: usize, snapshot: usize) -> Vec<P
         };
 
         // grab the size of the PE in memory, and set the range end to that.
-        let buffer = read_memory(process, &process_module.range).expect("Could not read process memory.");
+        let buffer =
+            read_memory(process, &process_module.range).expect("Could not read process memory.");
         let pe = PE::from_slice_assume_mapped(&buffer[..]);
-        process_module.range.end = current_entry.hModule + pe.nt_headers().optional_header().size_of_image() as usize;
+        process_module.range.end =
+            current_entry.hModule + pe.nt_headers().optional_header().size_of_image() as usize;
 
         results.push(process_module);
 
@@ -189,7 +185,6 @@ pub(crate) unsafe fn enumerate_memory_regions(process: usize) -> Vec<MemoryRegio
                 },
             });
         }
-
 
         // This will cause infinite loops when `current_address` gets back into a `None` state.
         if current_address == next_address {

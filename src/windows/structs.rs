@@ -1,8 +1,8 @@
 #![allow(non_snake_case)]
 #![allow(non_camel_case_types)]
 
-use std::mem::size_of;
 use crate::windows::consts::{MAX_MODULE_NAME32, MAX_PATH};
+use std::mem::size_of;
 
 #[repr(C)]
 pub struct THREADENTRY32 {
