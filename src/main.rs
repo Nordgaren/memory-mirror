@@ -58,8 +58,6 @@ unsafe fn dump(path: &str, pid: u32) {
     let snapshot = match snapshot_process(pid) {
         Ok(e) => e,
         Err(_) => {
-            let e = GetLastError();
-            println!("Error: {}", e);
             panic!("Last Error: {}", GetLastError())  ;
     },
     };
