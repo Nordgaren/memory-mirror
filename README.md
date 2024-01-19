@@ -9,10 +9,15 @@ into Ghidra for analysis.
 ### Dumping memory
 You'll want to invoke memory_mirror like so:
 ```shell
-$ ./memory_mirror.exe <pid> <output directory>
+$ ./memory_mirror.exe -p <output directory> pid <pid> 
+```
+or
+```shell
+$ ./memory_mirror.exe -p <output directory> name some_program.exe
 ```
 
 This will write dumped memory to `<output directory>`.
+In the case of dumping by name, any process with that name will be dumped into a folder with the process ID.
 
 ### Importing the modules into Ghidra
 Then you can import any concatted binaries into Ghidra. Run your analysis after doing this as running analysis with a
