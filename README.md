@@ -14,20 +14,6 @@ $ ./memory_mirror.exe <pid> <output directory>
 
 This will write dumped memory to `<output directory>`.
 
-### Merge PE headers and section regions
-After this is done it will have written the memory regions that it was able to acquire to disk. It will write
-PE headers and memory image sections to different files so they will need to be merged before analysis.
-This process only applies to dumped regions that are modules (exe's and DLL's).
-
-You can concat the PE header with the sections region using `cat` like so:
-```shell
-$ cat 140000000-1000-some-program.exe.dump 140001000-59cf000-UNK.dump > 140000000-59d0000-some-program.exe.dump
-```
-
-In this case it's simple because the two regions align exactly (the PE header ends at 140001000 and the other
-immediately starts after the PE header). If this isn't the case make sure to apply proper `0x00` padding between the
-regions.
-
 ### Importing the modules into Ghidra
 Then you can import any concatted binaries into Ghidra. Run your analysis after doing this as running analysis with a
 heap dump might cause trouble and will be very slow. You can only supply one executable/dll as a program to Ghidra but

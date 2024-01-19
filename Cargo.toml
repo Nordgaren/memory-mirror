@@ -6,15 +6,4 @@ edition = "2021"
 [dependencies]
 sysinfo = "0.28"
 indicatif = "0.17.3"
-
-[dependencies.windows]
-version = "0.48"
-features = [
-    "Win32_Foundation",
-    "Win32_System_Memory",
-    "Win32_System_Threading",
-    "Win32_System_SystemServices",
-    "Win32_System_SystemInformation",
-    "Win32_System_Diagnostics_Debug",
-    "Win32_System_Diagnostics_ToolHelp",
-]
+pe-util = { version = "0.1.0" , git = "https://github.com/Nordgaren/pe-util.git" }
