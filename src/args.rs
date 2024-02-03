@@ -8,7 +8,7 @@ pub struct Args {
     pub(crate) command: DumpType,
 
     /// Output folder.
-    #[arg(short, long, default_value = "")]
+    #[arg(short, long, global = true,default_value = "")]
     pub(crate) path: String,
 }
 

@@ -116,7 +116,7 @@ fn dump_buffer(path: &str, buffer: Vec<u8>) {
 }
 
 unsafe fn patch_section_headers(mut buffer: Vec<u8>) -> Vec<u8> {
-    let pe = match PE::from_slice(&buffer[..]) {
+    let mut pe = match PE::from_slice(&buffer[..]) {
         Ok(p) => p,
         Err(_) => {
             println!(

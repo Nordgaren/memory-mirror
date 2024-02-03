@@ -5,5 +5,5 @@ edition = "2021"
 
 [dependencies]
 sysinfo = "0.28"
-pe-util = { version = "0.1.0" , git = "https://github.com/Nordgaren/pe-util.git" }
+pe-util = { git = "https://github.com/Nordgaren/pe-util.git" }
 clap = { version = "4.4.16", features = ["derive"] }
