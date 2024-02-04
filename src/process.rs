@@ -5,7 +5,7 @@ use std::io::{Error, ErrorKind};
 use std::mem::size_of;
 use std::ops::Range;
 
-use crate::windows::api::{CloseHandle, CreateToolhelp32Snapshot, GetLastError, GetThreadContext, Module32First, Module32Next, OpenProcess, OpenThread, ReadProcessMemory, ResumeThread, SuspendThread, Thread32First, Thread32Next, VirtualQueryEx};
+use crate::windows::api::{CloseHandle, CreateToolhelp32Snapshot, GetLastError, Module32First, Module32Next, OpenProcess, OpenThread, ReadProcessMemory, ResumeThread, SuspendThread, Thread32First, Thread32Next, VirtualQueryEx};
 use crate::windows::consts::{
     INVALID_HANDLE_VALUE, MEM_FREE, PROCESS_QUERY_INFORMATION, PROCESS_VM_READ, TH32CS_SNAPMODULE,
     TH32CS_SNAPTHREAD, THREAD_SUSPEND_RESUME,
