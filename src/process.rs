@@ -51,7 +51,10 @@ pub(crate) fn open_process(process: u32) -> std::io::Result<usize> {
 
         if process_id == INVALID_HANDLE_VALUE {
             let last_error = GetLastError();
-            return Err(Error::new(ErrorKind::AddrInUse, format!("Could not open process {process}. Invalid handle: {process_id}. LastError: 0x{last_error:X}")));
+            return Err(Error::new(
+                ErrorKind::AddrInUse,
+                format!("Could not open process {process}. Invalid handle: {process_id}. LastError: 0x{last_error:X}"),
+            ));
         }
 
         Ok(process_id)
