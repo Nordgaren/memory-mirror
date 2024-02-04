@@ -9,11 +9,11 @@ into Ghidra for analysis.
 ### Dumping memory
 You'll want to invoke memory_mirror like so:
 ```shell
-$ ./memory_mirror.exe -p <output directory> pid <pid> 
+$ ./memory_mirror.exe pid <pid> -p <output directory>  
 ```
 or
 ```shell
-$ ./memory_mirror.exe -p <output directory> name some_program.exe
+$ ./memory_mirror.exe name some_program.exe -p <output directory>  
 ```
 
 This will write dumped memory to `<output directory>`.
