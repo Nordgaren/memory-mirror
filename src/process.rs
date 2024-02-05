@@ -5,10 +5,7 @@ use std::io::{Error, ErrorKind};
 use std::mem::size_of;
 use std::ops::Range;
 
-use crate::windows::api::{
-    CreateToolhelp32Snapshot, GetLastError, Module32First, Module32Next, OpenProcess, OpenThread,
-    ReadProcessMemory, ResumeThread, SuspendThread, Thread32First, Thread32Next, VirtualQueryEx,
-};
+use crate::windows::api::{CloseHandle, CreateToolhelp32Snapshot, GetLastError, Module32First, Module32Next, OpenProcess, OpenThread, ReadProcessMemory, ResumeThread, SuspendThread, Thread32First, Thread32Next, VirtualQueryEx};
 use crate::windows::consts::{
     INVALID_HANDLE_VALUE, MEM_FREE, PROCESS_QUERY_INFORMATION, PROCESS_VM_READ, TH32CS_SNAPMODULE,
     TH32CS_SNAPTHREAD, THREAD_SUSPEND_RESUME,
@@ -54,7 +51,10 @@ pub(crate) fn open_process(process: u32) -> std::io::Result<usize> {
 
         if process_id == INVALID_HANDLE_VALUE {
             let last_error = GetLastError();
-            return Err(Error::new(ErrorKind::AddrInUse, format!("Could not open process {process}. Invalid handle: {process_id}. LastError: 0x{last_error:X}")));
+            return Err(Error::new(
+                ErrorKind::AddrInUse,
+                format!("Could not open process {process}. Invalid handle: {process_id}. LastError: 0x{last_error:X}"),
+            ));
         }
 
         Ok(process_id)
@@ -67,7 +67,10 @@ pub(crate) fn open_thread(access: u32, inherit: bool, thread: u32) -> std::io::R
 
         if thread_id == 0 {
             let last_error = GetLastError();
-            return Err(Error::new(ErrorKind::AddrInUse, format!("Could not open process {thread}. Invalid handle: {thread_id}. LastError: 0x{last_error:X}")));
+            return Err(Error::new(
+                ErrorKind::AddrInUse,
+                format!("Could not open process {thread}. Invalid handle: {thread_id}. LastError: 0x{last_error:X}"),
+            ));
         }
 
         Ok(thread_id)
@@ -81,7 +84,10 @@ pub(crate) fn snapshot_process(process: u32) -> std::io::Result<usize> {
 
         if snapshot_handle == INVALID_HANDLE_VALUE {
             let last_error = GetLastError();
-            return Err(Error::new(ErrorKind::AddrInUse, format!("Could not open snapshot for process {process}. Invalid handle: {snapshot_handle}. LastError: 0x{last_error:X}")));
+            return Err(Error::new(
+                ErrorKind::AddrInUse,
+                format!("Could not open snapshot for process {process}. Invalid handle: {snapshot_handle}. LastError: 0x{last_error:X}"),
+            ));
         }
 
         Ok(snapshot_handle)
@@ -115,8 +121,9 @@ pub(crate) unsafe fn freeze_process(snapshot: usize, process: u32) -> Vec<usize>
 }
 
 pub(crate) unsafe fn resume_threads(threads: Vec<usize>) {
-    for thread in threads.iter() {
-        ResumeThread(*thread);
+    for thread in threads.into_iter() {
+        ResumeThread(thread);
+        CloseHandle(thread);
     }
 }
 
@@ -129,14 +136,18 @@ pub(crate) unsafe fn enumerate_modules(process: usize, snapshot: usize) -> Vec<P
 
     let mut results = vec![];
     loop {
-        let module_name = CStr::from_bytes_until_nul(&current_entry.szModule)
+        let mut name = CStr::from_bytes_until_nul(&current_entry.szModule)
             .unwrap()
             .to_str()
             .unwrap()
             .to_string();
 
+        if name.is_empty() {
+            name.push_str("UNK-MODULE")
+        }
+
         let mut process_module = ProcessModule {
-            name: module_name,
+            name,
             range: Range {
                 start: current_entry.hModule,
                 end: current_entry.hModule + current_entry.dwSize as usize,

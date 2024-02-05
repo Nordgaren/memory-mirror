@@ -6,6 +6,7 @@ use std::ffi::c_void;
 #[link(name = "kernel32", kind = "raw-dylib")]
 extern "system" {
     pub fn CreateToolhelp32Snapshot(dwFlags: u32, th32ProcessID: u32) -> usize;
+    pub fn CloseHandle(hObject: usize) -> bool;
     pub fn GetLastError() -> u32;
     pub fn Module32First(hSnapshot: usize, lpee: *mut MODULEENTRY32) -> bool;
     pub fn Module32Next(hSnapshot: usize, lpee: *mut MODULEENTRY32) -> bool;
