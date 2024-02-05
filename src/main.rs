@@ -6,7 +6,7 @@ use pe_util::PE;
 use std::fs;
 use std::fs::File;
 use std::io::Write;
-use std::ops::Range;
+use std::ops::{Range, Sub};
 mod args;
 mod process;
 mod windows;
@@ -71,7 +71,7 @@ unsafe fn dump(path: &str, pid: u32) {
         .filter(|m| {
             !modules
                 .iter()
-                .any(|module| module.range.contains(&m.range.end))
+                .any(|module| module.range.contains(&m.range.end.sub(1)))
         })
         .collect::<Vec<MemoryRegion>>();
 
