@@ -1,6 +1,6 @@
 use crate::args::{Args, DumpType};
 use crate::handle::{ProcessHandle, SnapshotHandle};
-use crate::windows::consts::MEM_FREE;
+use crate::windows::consts::{MEM_FREE, PROCESS_QUERY_INFORMATION, PROCESS_VM_READ, TH32CS_SNAPMODULE, TH32CS_SNAPTHREAD};
 use clap::Parser;
 use pe_util::PE;
 use std::fs;
@@ -65,11 +65,11 @@ fn main() -> std::io::Result<()> {
 }
 
 unsafe fn dump(path: &str, pid: u32) -> std::io::Result<()> {
-    let snapshot = SnapshotHandle::from_pid(pid)?;
+    let snapshot = SnapshotHandle::new(TH32CS_SNAPTHREAD | TH32CS_SNAPMODULE, pid)?;
 
     let frozen_threads = freeze_process(snapshot.raw_value(), pid)?;
 
-    let process_handle = ProcessHandle::from_pid(pid)?;
+    let process_handle = ProcessHandle::new(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, false, pid)?;
 
     let modules = enumerate_modules(process_handle.raw_value(), snapshot.raw_value());
     let regions = enumerate_memory_regions(process_handle.raw_value());

@@ -2,16 +2,13 @@ use crate::windows::api::{
     CloseHandle, CreateToolhelp32Snapshot, GetLastError, OpenProcess, OpenThread, ResumeThread,
     SuspendThread,
 };
-use crate::windows::consts::{
-    INVALID_HANDLE_VALUE, PROCESS_QUERY_INFORMATION, PROCESS_VM_READ, TH32CS_SNAPMODULE,
-    TH32CS_SNAPTHREAD,
-};
+use crate::windows::consts::INVALID_HANDLE_VALUE;
 use std::io::{Error, ErrorKind};
 
 pub(crate) struct FrozenThreadHandle(ThreadHandle);
 
 impl FrozenThreadHandle {
-    pub fn from_thread_handle(handle: ThreadHandle) -> std::io::Result<Self> {
+    pub fn new(handle: ThreadHandle) -> std::io::Result<Self> {
         unsafe {
             if SuspendThread(handle.0) == u32::MAX {
                 return Err(Error::new(
@@ -28,8 +25,8 @@ impl FrozenThreadHandle {
         Ok(Self(handle))
     }
     pub fn from_thread_id(access: u32, inherit: bool, thread: u32) -> std::io::Result<Self> {
-        let handle = ThreadHandle::from_thread_id(access, inherit, thread)?;
-        Self::from_thread_handle(handle)
+        let handle = ThreadHandle::new(access, inherit, thread)?;
+        Self::new(handle)
     }
     pub fn raw_value(&self) -> usize {
         self.0 .0
@@ -45,18 +42,21 @@ impl Drop for FrozenThreadHandle {
 pub(crate) struct ThreadHandle(usize);
 
 impl ThreadHandle {
-    pub fn from_thread_id(access: u32, inherit: bool, thread: u32) -> std::io::Result<Self> {
-        let thread_id = unsafe { OpenThread(access, inherit, thread) };
+    pub fn new(access: u32, inherit: bool, thread_id: u32) -> std::io::Result<Self> {
+        let handle = unsafe { OpenThread(access, inherit, thread_id) };
 
-        if thread_id == 0 {
+        // Return value
+        // If the function succeeds, the return value is an open handle to the specified thread.
+        // If the function fails, the return value is NULL. To get extended error information, call GetLastError.
+        if handle == 0 {
             let last_error = unsafe { GetLastError() };
             return Err(Error::new(
                 ErrorKind::Other,
-                format!("Could not open process {thread}. Invalid handle: {thread_id}. LastError: 0x{last_error:X}"),
+                format!("Could not open process {thread_id}. Invalid handle: {handle}. LastError: 0x{last_error:X}"),
             ));
         }
 
-        Ok(ThreadHandle(thread_id))
+        Ok(ThreadHandle(handle))
     }
     #[allow(unused)]
     pub fn raw_value(&self) -> usize {
@@ -73,19 +73,21 @@ impl Drop for ThreadHandle {
 pub(crate) struct ProcessHandle(usize);
 
 impl ProcessHandle {
-    pub fn from_pid(process: u32) -> std::io::Result<Self> {
-        let process_id =
-            unsafe { OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, false, process) };
+    pub fn new(access: u32, inherit: bool, process_id: u32) -> std::io::Result<Self> {
+        let handle = unsafe { OpenProcess(access, inherit, process_id) };
 
-        if process_id == INVALID_HANDLE_VALUE {
+        // Return value
+        // If the function succeeds, the return value is an open handle to the specified process.
+        // If the function fails, the return value is NULL. To get extended error information, call GetLastError.
+        if handle == 0 {
             let last_error = unsafe { GetLastError() };
             return Err(Error::new(
                 ErrorKind::AddrInUse,
-                format!("Could not open process {process}. Invalid handle: {process_id}. LastError: 0x{last_error:X}"),
+                format!("Could not open process {process_id}. Invalid handle: {handle}. LastError: 0x{last_error:X}"),
             ));
         }
 
-        Ok(Self(process_id))
+        Ok(Self(handle))
     }
     pub fn raw_value(&self) -> usize {
         self.0
@@ -101,9 +103,8 @@ impl Drop for ProcessHandle {
 pub(crate) struct SnapshotHandle(usize);
 
 impl SnapshotHandle {
-    pub(crate) fn from_pid(process: u32) -> std::io::Result<Self> {
-        let handle =
-            unsafe { CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD | TH32CS_SNAPMODULE, process) };
+    pub(crate) fn new(flags: u32, process: u32) -> std::io::Result<Self> {
+        let handle = unsafe { CreateToolhelp32Snapshot(flags, process) };
 
         if handle == INVALID_HANDLE_VALUE {
             let last_error = unsafe { GetLastError() };
@@ -151,4 +152,3 @@ fn close_handle(handle: usize) {
         }
     }
 }
-
