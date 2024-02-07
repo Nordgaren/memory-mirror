@@ -70,32 +70,6 @@ impl Drop for ThreadHandle {
     }
 }
 
-#[inline(always)]
-fn resume_thread(handle: usize) {
-    unsafe {
-        if ResumeThread(handle) == u32::MAX {
-            println!(
-                "Thread handle did not resume successfully: {} 0x{:X}",
-                handle,
-                GetLastError()
-            );
-        }
-    }
-}
-
-#[inline(always)]
-fn close_handle(handle: usize) {
-    unsafe {
-        if !CloseHandle(handle) {
-            println!(
-                "Handle did not close successfully: {} 0x{:X}",
-                handle,
-                GetLastError()
-            );
-        }
-    }
-}
-
 pub(crate) struct ProcessHandle(usize);
 
 impl ProcessHandle {
@@ -151,3 +125,30 @@ impl Drop for SnapshotHandle {
         close_handle(self.0)
     }
 }
+
+#[inline(always)]
+fn resume_thread(handle: usize) {
+    unsafe {
+        if ResumeThread(handle) == u32::MAX {
+            println!(
+                "Thread handle did not resume successfully: {} 0x{:X}",
+                handle,
+                GetLastError()
+            );
+        }
+    }
+}
+
+#[inline(always)]
+fn close_handle(handle: usize) {
+    unsafe {
+        if !CloseHandle(handle) {
+            println!(
+                "Handle did not close successfully: {} 0x{:X}",
+                handle,
+                GetLastError()
+            );
+        }
+    }
+}
+
