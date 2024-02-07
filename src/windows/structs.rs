@@ -78,6 +78,7 @@ impl Default for THREADENTRY32 {
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone, Default)]
+#[allow(clippy::upper_case_acronyms)]
 pub struct CONTEXT {
     pub P1Home: u64,
     pub P2Home: u64,

@@ -159,7 +159,9 @@ pub const CONTEXT_XSTATE: u32 = (CONTEXT_AMD64 | 0x40);
 pub const CONTEXT_KERNEL_CET: u32 = (CONTEXT_AMD64 | 0x80);
 
 // Thread Context constants WoW64
+#[allow(non_upper_case_globals)]
 pub const WOW64_CONTEXT_i386: u32 = 0x00010000;
+#[allow(non_upper_case_globals)]
 pub const WOW64_CONTEXT_i486: u32 = 0x00010000;
 pub const WOW64_CONTEXT_CONTROL: u32 = (WOW64_CONTEXT_i386 | 0x00000001);
 pub const WOW64_CONTEXT_INTEGER: u32 = (WOW64_CONTEXT_i386 | 0x00000002);

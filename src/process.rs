@@ -7,8 +7,8 @@ use std::{fmt, fs};
 
 use crate::handle::FrozenThreadHandle;
 use crate::windows::api::{
-    CloseHandle, GetLastError, GetThreadContext, Module32First, Module32Next, ReadProcessMemory,
-    ResumeThread, Thread32First, Thread32Next, VirtualQueryEx,
+    GetLastError, GetThreadContext, Module32First, Module32Next, ReadProcessMemory, Thread32First,
+    Thread32Next, VirtualQueryEx,
 };
 use crate::windows::consts::{
     CONTEXT_ALL, ERROR_INVALID_PARAMETER, MEM_FREE, THREAD_GET_CONTEXT, THREAD_SUSPEND_RESUME,
@@ -79,13 +79,6 @@ pub(crate) fn freeze_process(snapshot: usize, pid: u32) -> std::io::Result<Vec<F
         }
     }
     Ok(handles)
-}
-
-pub(crate) unsafe fn resume_threads(threads: Vec<usize>) {
-    for thread in threads.into_iter() {
-        ResumeThread(thread);
-        CloseHandle(thread);
-    }
 }
 
 pub(crate) unsafe fn enumerate_modules(process: usize, snapshot: usize) -> Vec<ProcessModule> {
@@ -210,18 +203,16 @@ pub(crate) fn read_memory(process: usize, range: &Range<usize>) -> std::io::Resu
 
 pub fn dump_thread_context(path: &str, threads: &Vec<FrozenThreadInfo>) {
     for thread in threads {
-        let mut context = CONTEXT::default();
-        context.ContextFlags = CONTEXT_ALL;
+        let mut context = CONTEXT { ContextFlags: CONTEXT_ALL, ..Default::default() };
         let success = unsafe { GetThreadContext(thread.handle.raw_value(), &mut context) };
         if !success {
             continue;
         }
 
         let filepath = format!("{path}/_{}_context.txt", thread.entry.th32ThreadID);
-        match fs::write(&filepath, format!("{context:#?}")) {
-            Err(e) => println!("Could not write thread context to: {filepath}. Error: {e}"),
-            _ => {}
-        };
+        if let Err(e) = fs::write(&filepath, format!("{context:#?}")) {
+            println!("Could not write thread context to: {filepath}. Error: {e}")
+        }
     }
 }
 

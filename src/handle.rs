@@ -58,6 +58,7 @@ impl ThreadHandle {
 
         Ok(ThreadHandle(thread_id))
     }
+    #[allow(unused)]
     pub fn raw_value(&self) -> usize {
         self.0
     }

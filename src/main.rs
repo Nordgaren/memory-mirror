@@ -38,12 +38,12 @@ fn main() -> std::io::Result<()> {
             for process in processes {
                 println!("Dumping process {}...", process);
                 let output_dir = &format!("{}/{}", args.path, process.pid);
-                fs::create_dir(&output_dir).expect(
+                fs::create_dir(output_dir).expect(
                     "Could not create directory for process. If directory exists, try removing it.",
                 );
 
                 unsafe {
-                    dump(&output_dir, process.pid)?;
+                    dump(output_dir, process.pid)?;
                 }
             }
         }
