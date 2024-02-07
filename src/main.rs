@@ -94,6 +94,7 @@ unsafe fn dump(path: &str, pid: u32) -> std::io::Result<()> {
 
 fn dump_module(path: &str, process: usize, module: &ProcessModule) -> std::io::Result<()> {
     let buffer = read_memory(process, &module.range)?;
+    let buffer = patch_section_headers(buffer);
     let filename = build_filename(module.name.as_str(), &module.range);
     dump_buffer(&format!("{}/{}", path, filename), buffer)?;
     Ok(())
