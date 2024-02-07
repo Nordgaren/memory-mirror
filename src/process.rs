@@ -65,7 +65,7 @@ pub(crate) fn freeze_process(snapshot: usize, pid: u32) -> std::io::Result<Vec<F
     let mut handles = vec![];
     loop {
         if entry.th32OwnerProcessID == pid {
-            let handle = FrozenThreadHandle::from_thread_id(
+            let handle = FrozenThreadHandle::new(
                 THREAD_SUSPEND_RESUME | THREAD_GET_CONTEXT,
                 false,
                 entry.th32ThreadID,

@@ -8,7 +8,11 @@ use std::io::{Error, ErrorKind};
 pub(crate) struct FrozenThreadHandle(ThreadHandle);
 
 impl FrozenThreadHandle {
-    pub fn new(handle: ThreadHandle) -> std::io::Result<Self> {
+    pub fn new(access: u32, inherit: bool, thread: u32) -> std::io::Result<Self> {
+        let handle = ThreadHandle::new(access, inherit, thread)?;
+        Self::from_thread_handle(handle)
+    }
+    pub fn from_thread_handle(handle: ThreadHandle) -> std::io::Result<Self> {
         unsafe {
             if SuspendThread(handle.0) == u32::MAX {
                 return Err(Error::new(
@@ -23,10 +27,6 @@ impl FrozenThreadHandle {
         }
 
         Ok(Self(handle))
-    }
-    pub fn from_thread_id(access: u32, inherit: bool, thread: u32) -> std::io::Result<Self> {
-        let handle = ThreadHandle::new(access, inherit, thread)?;
-        Self::new(handle)
     }
     pub fn raw_value(&self) -> usize {
         self.0 .0
@@ -132,8 +132,7 @@ fn resume_thread(handle: usize) {
     unsafe {
         if ResumeThread(handle) == u32::MAX {
             println!(
-                "Thread handle did not resume successfully: {} 0x{:X}",
-                handle,
+                "Thread handle did not resume successfully: {handle} 0x{:X}",
                 GetLastError()
             );
         }
@@ -145,8 +144,7 @@ fn close_handle(handle: usize) {
     unsafe {
         if !CloseHandle(handle) {
             println!(
-                "Handle did not close successfully: {} 0x{:X}",
-                handle,
+                "Handle did not close successfully: {handle} 0x{:X}",
                 GetLastError()
             );
         }
