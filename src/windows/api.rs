@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 
-use crate::windows::structs::{MEMORY_BASIC_INFORMATION, MODULEENTRY32, THREADENTRY32};
+use crate::windows::structs::{CONTEXT, MEMORY_BASIC_INFORMATION, MODULEENTRY32, THREADENTRY32};
 use std::ffi::c_void;
 
 #[link(name = "kernel32", kind = "raw-dylib")]
@@ -8,6 +8,7 @@ extern "system" {
     pub fn CreateToolhelp32Snapshot(dwFlags: u32, th32ProcessID: u32) -> usize;
     pub fn CloseHandle(hObject: usize) -> bool;
     pub fn GetLastError() -> u32;
+    pub fn GetThreadContext(hThread: usize, lpContext: &mut CONTEXT) -> bool;
     pub fn Module32First(hSnapshot: usize, lpee: *mut MODULEENTRY32) -> bool;
     pub fn Module32Next(hSnapshot: usize, lpee: *mut MODULEENTRY32) -> bool;
     pub fn OpenProcess(dwDesiredAccess: u32, bInheritHandle: bool, dwProcessId: u32) -> usize;
