@@ -335,7 +335,7 @@ fn close_handle(handle: usize) {
     unsafe {
         if !CloseHandle(handle) {
             println!(
-                "Thread handle did not close successfully: {} 0x{:X}",
+                "Handle did not close successfully: {} 0x{:X}",
                 handle,
                 GetLastError()
             );
