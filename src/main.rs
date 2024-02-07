@@ -1,4 +1,5 @@
 use crate::args::{Args, DumpType};
+use crate::handle::{ProcessHandle, SnapshotHandle};
 use crate::windows::consts::MEM_FREE;
 use clap::Parser;
 use pe_util::PE;
@@ -8,10 +9,14 @@ use std::io::{Error, ErrorKind, Write};
 use std::ops::{Range, Sub};
 
 mod args;
+mod handle;
 mod process;
 mod windows;
 
-use crate::process::{enumerate_memory_regions, enumerate_modules, freeze_process, get_dumpable_processes, read_memory, MemoryRegion, ProcessModule, ProcessHandle, SnapshotHandle};
+use crate::process::{
+    enumerate_memory_regions, enumerate_modules, freeze_process, get_dumpable_processes,
+    read_memory, MemoryRegion, ProcessModule,
+};
 
 fn main() -> std::io::Result<()> {
     let args = Args::parse();
