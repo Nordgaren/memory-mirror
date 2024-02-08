@@ -41,7 +41,7 @@ impl FrozenThreadHandle {
     /// will be dropped and call `CloseHandle`. If these functions have already been called on this handle, it could lead
     /// to undefined behaviour
     pub unsafe fn raw_value(&self) -> usize {
-        self.0 .0
+        self.0.0
     }
     /// Resumes the thread and returns the underlying `ThreadHandle`.
     pub fn resume_thread(mut self) -> ThreadHandle {
@@ -195,6 +195,7 @@ impl Display for SnapshotHandle {
         write!(f, "{}", unsafe { self.raw_value() })
     }
 }
+
 /// Checks if the handle is not `INVALID_HANDLE_VALUE` and then calls `ResumeThread`
 ///
 /// # Safety
@@ -211,6 +212,7 @@ unsafe fn resume_thread(handle: usize) {
         }
     }
 }
+
 /// Checks if the handle is not `INVALID_HANDLE_VALUE` and then calls `CloseHandle`
 ///
 /// # Safety
