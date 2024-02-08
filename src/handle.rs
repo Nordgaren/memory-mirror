@@ -58,7 +58,7 @@ impl FrozenThreadHandle {
     pub unsafe fn raw_value(&self) -> usize {
         self.0.0
     }
-    /// resumes the thread and returns the underlying `ThreadHandle`.
+    /// Resumes the thread and returns the underlying `ThreadHandle`.
     ///
     /// return `ThreadHandle`
     pub fn resume_thread(mut self) -> ThreadHandle {
@@ -158,7 +158,8 @@ impl ProcessHandle {
     /// returns `usize`
     ///
     /// # Safety
-    /// Calling this function give you the raw value of the handle. This value cannot be used by any other owned handle
+    ///
+    /// Calling this function gives you the raw value of the handle. This value cannot be used by any other owned handle
     /// type, as when `ProcessHandle` is dropped, it will call `CloseHandle`. If `CloseHandle` has already been called
     /// on this handle, it could lead to undefined behaviour
     pub unsafe fn raw_value(&self) -> usize {
