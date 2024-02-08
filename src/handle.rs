@@ -4,6 +4,7 @@ use crate::windows::api::{
 };
 use crate::windows::consts::INVALID_HANDLE_VALUE;
 use std::io::{Error, ErrorKind};
+use std::mem;
 
 pub(crate) struct FrozenThreadHandle(ThreadHandle);
 
@@ -31,8 +32,10 @@ impl FrozenThreadHandle {
     pub fn raw_value(&self) -> usize {
         self.0 .0
     }
-    pub fn resume_thread(self) -> ThreadHandle {
-        self.0
+    pub fn resume_thread(mut self) -> ThreadHandle {
+        let handle = mem::replace(&mut self.0, ThreadHandle(INVALID_HANDLE_VALUE));
+        close_handle(handle.0);
+        handle
     }
 }
 
@@ -133,7 +136,7 @@ impl Drop for SnapshotHandle {
 #[inline(always)]
 fn resume_thread(handle: usize) {
     unsafe {
-        if ResumeThread(handle) == u32::MAX {
+        if handle != INVALID_HANDLE_VALUE && ResumeThread(handle) == u32::MAX {
             println!(
                 "Thread handle did not resume successfully: {handle} 0x{:X}",
                 GetLastError()
@@ -145,7 +148,7 @@ fn resume_thread(handle: usize) {
 #[inline(always)]
 fn close_handle(handle: usize) {
     unsafe {
-        if !CloseHandle(handle) {
+        if handle != INVALID_HANDLE_VALUE && !CloseHandle(handle) {
             println!(
                 "Handle did not close successfully: {handle} 0x{:X}",
                 GetLastError()

@@ -7,6 +7,7 @@ use std::fs;
 use std::fs::File;
 use std::io::{Error, ErrorKind, Write};
 use std::ops::{Range, Sub};
+use std::str::FromStr;
 
 mod args;
 mod handle;
@@ -19,6 +20,9 @@ use crate::process::{
 };
 
 fn main() -> std::io::Result<()> {
+    let str = "string\0".to_string();
+    println!("{str}");
+
     let args = Args::parse();
 
     match args.command {
