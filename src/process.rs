@@ -148,7 +148,8 @@ pub(crate) fn enumerate_memory_regions(process: &ProcessHandle) -> Vec<MemoryReg
             // the function fails with ERROR_INVALID_PARAMETER.
             let err = unsafe { GetLastError() };
             if err != ERROR_INVALID_PARAMETER {
-                println!("VirtualQueryEx failed. GetLastError: 0x{err:X}")
+                println!("VirtualQueryEx failed. GetLastError: 0x{err:X}");
+                return results;
             }
         }
 

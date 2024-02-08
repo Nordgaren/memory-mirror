@@ -7,7 +7,6 @@ use std::fs;
 use std::fs::File;
 use std::io::{Error, ErrorKind, Write};
 use std::ops::{Range, Sub};
-use std::str::FromStr;
 
 mod args;
 mod handle;
