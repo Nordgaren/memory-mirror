@@ -5,7 +5,7 @@ use std::mem::size_of;
 use std::ops::Range;
 use std::{fmt, fs};
 
-use crate::handle::FrozenThreadHandle;
+use crate::handle::{FrozenThreadHandle, ProcessHandle, SnapshotHandle};
 use crate::windows::api::{
     GetLastError, GetThreadContext, Module32First, Module32Next, ReadProcessMemory, Thread32First,
     Thread32Next, VirtualQueryEx,
@@ -48,7 +48,8 @@ impl fmt::Display for DumpableProcess {
     }
 }
 
-pub(crate) fn freeze_process(snapshot: usize, pid: u32) -> std::io::Result<Vec<FrozenThreadInfo>> {
+pub(crate) fn freeze_process(snapshot: &SnapshotHandle, pid: u32) -> std::io::Result<Vec<FrozenThreadInfo>> {
+    let snapshot = unsafe { snapshot.raw_value() };
     let mut entry = THREADENTRY32::default();
     unsafe {
         if !Thread32First(snapshot, &mut entry) {
@@ -81,7 +82,8 @@ pub(crate) fn freeze_process(snapshot: usize, pid: u32) -> std::io::Result<Vec<F
     Ok(handles)
 }
 
-pub(crate) unsafe fn enumerate_modules(process: usize, snapshot: usize) -> Vec<ProcessModule> {
+pub(crate) unsafe fn enumerate_modules(process: &ProcessHandle, snapshot: &SnapshotHandle) -> Vec<ProcessModule> {
+    let snapshot = snapshot.raw_value();
     let mut current_entry = MODULEENTRY32::default();
 
     if !Module32First(snapshot, &mut current_entry) {
@@ -125,7 +127,8 @@ pub(crate) unsafe fn enumerate_modules(process: usize, snapshot: usize) -> Vec<P
     results
 }
 
-pub(crate) fn enumerate_memory_regions(process: usize) -> Vec<MemoryRegion> {
+pub(crate) fn enumerate_memory_regions(process: &ProcessHandle) -> Vec<MemoryRegion> {
+    let process = unsafe { process.raw_value() };
     let mut current_address = std::ptr::null::<c_void>();
     let mut current_entry = MEMORY_BASIC_INFORMATION::default();
     let mut results = vec![];
@@ -173,14 +176,14 @@ pub(crate) fn enumerate_memory_regions(process: usize) -> Vec<MemoryRegion> {
     results
 }
 
-pub(crate) fn read_memory(process: usize, range: &Range<usize>) -> std::io::Result<Vec<u8>> {
+pub(crate) fn read_memory(process: &ProcessHandle, range: &Range<usize>) -> std::io::Result<Vec<u8>> {
     let size = range.end - range.start;
     let mut buffer = vec![0; size];
     let mut bytes_read = 0;
 
     let success = unsafe {
         ReadProcessMemory(
-            process,
+            process.raw_value(),
             range.start,
             buffer.as_mut_ptr(),
             size,

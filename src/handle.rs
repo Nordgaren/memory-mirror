@@ -1,3 +1,4 @@
+use std::fmt::{Display, Formatter};
 use crate::windows::api::{
     CloseHandle, CreateToolhelp32Snapshot, GetLastError, OpenProcess, OpenThread, ResumeThread,
     SuspendThread,
@@ -77,6 +78,12 @@ impl Drop for FrozenThreadHandle {
     }
 }
 
+impl Display for FrozenThreadHandle {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", unsafe { self.raw_value() })
+    }
+}
+
 pub(crate) struct ThreadHandle(usize);
 
 impl ThreadHandle {
@@ -122,6 +129,12 @@ impl ThreadHandle {
 impl Drop for ThreadHandle {
     fn drop(&mut self) {
         close_handle(self.0)
+    }
+}
+
+impl Display for ThreadHandle {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", unsafe { self.raw_value() })
     }
 }
 
@@ -173,6 +186,12 @@ impl Drop for ProcessHandle {
     }
 }
 
+impl Display for ProcessHandle {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", unsafe { self.raw_value() })
+    }
+}
+
 pub(crate) struct SnapshotHandle(usize);
 
 impl SnapshotHandle {
@@ -213,6 +232,12 @@ impl SnapshotHandle {
 impl Drop for SnapshotHandle {
     fn drop(&mut self) {
         close_handle(self.0)
+    }
+}
+
+impl Display for SnapshotHandle {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", unsafe { self.raw_value() })
     }
 }
 
