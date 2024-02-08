@@ -48,7 +48,10 @@ impl fmt::Display for DumpableProcess {
     }
 }
 
-pub(crate) fn freeze_process(snapshot: &SnapshotHandle, pid: u32) -> std::io::Result<Vec<FrozenThreadInfo>> {
+pub(crate) fn freeze_process(
+    snapshot: &SnapshotHandle,
+    pid: u32,
+) -> std::io::Result<Vec<FrozenThreadInfo>> {
     let snapshot = unsafe { snapshot.raw_value() };
     let mut entry = THREADENTRY32::default();
     unsafe {
@@ -82,7 +85,10 @@ pub(crate) fn freeze_process(snapshot: &SnapshotHandle, pid: u32) -> std::io::Re
     Ok(handles)
 }
 
-pub(crate) unsafe fn enumerate_modules(process: &ProcessHandle, snapshot: &SnapshotHandle) -> Vec<ProcessModule> {
+pub(crate) unsafe fn enumerate_modules(
+    process: &ProcessHandle,
+    snapshot: &SnapshotHandle,
+) -> Vec<ProcessModule> {
     let snapshot = snapshot.raw_value();
     let mut current_entry = MODULEENTRY32::default();
 
@@ -177,7 +183,10 @@ pub(crate) fn enumerate_memory_regions(process: &ProcessHandle) -> Vec<MemoryReg
     results
 }
 
-pub(crate) fn read_memory(process: &ProcessHandle, range: &Range<usize>) -> std::io::Result<Vec<u8>> {
+pub(crate) fn read_memory(
+    process: &ProcessHandle,
+    range: &Range<usize>,
+) -> std::io::Result<Vec<u8>> {
     let size = range.end - range.start;
     let mut buffer = vec![0; size];
     let mut bytes_read = 0;
@@ -207,13 +216,15 @@ pub(crate) fn read_memory(process: &ProcessHandle, range: &Range<usize>) -> std:
 
 pub fn dump_thread_context(path: &str, threads: &[FrozenThreadInfo]) {
     for thread in threads {
-        let mut context = CONTEXT { ContextFlags: CONTEXT_ALL, ..Default::default() };
+        let mut context = CONTEXT {
+            ContextFlags: CONTEXT_ALL,
+            ..Default::default()
+        };
         unsafe {
             if !GetThreadContext(thread.handle.raw_value(), &mut context) {
                 continue;
             }
         };
-
 
         let filepath = format!("{path}/_{}_context.txt", thread.entry.th32ThreadID);
         if let Err(e) = fs::write(&filepath, format!("{context:#?}")) {

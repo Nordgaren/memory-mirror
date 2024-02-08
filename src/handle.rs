@@ -1,9 +1,9 @@
-use std::fmt::{Display, Formatter};
 use crate::windows::api::{
     CloseHandle, CreateToolhelp32Snapshot, GetLastError, OpenProcess, OpenThread, ResumeThread,
     SuspendThread,
 };
 use crate::windows::consts::INVALID_HANDLE_VALUE;
+use std::fmt::{Display, Formatter};
 use std::io::{Error, ErrorKind};
 
 pub(crate) struct FrozenThreadHandle(ThreadHandle);
@@ -41,7 +41,7 @@ impl FrozenThreadHandle {
     /// will be dropped and call `CloseHandle`. If these functions have already been called on this handle, it could lead
     /// to undefined behaviour
     pub unsafe fn raw_value(&self) -> usize {
-        self.0.0
+        self.0 .0
     }
     /// Resumes the thread and returns the underlying `ThreadHandle`.
     pub fn resume_thread(mut self) -> ThreadHandle {
@@ -49,14 +49,14 @@ impl FrozenThreadHandle {
         // if the handle is not `INVALID_HANDLE_VALUE` before calling the windows api function it needs to call. This way
         // replacing the handle with `INVALID_HANDLE_VALUE` as defined by the windows api will not cause undefined behaviour.
         let handle = std::mem::replace(&mut self.0, ThreadHandle(INVALID_HANDLE_VALUE));
-        resume_thread(handle.0);
+        unsafe { resume_thread(handle.0) };
         handle
     }
 }
 
 impl Drop for FrozenThreadHandle {
     fn drop(&mut self) {
-        resume_thread( unsafe { self.raw_value()});
+        unsafe { resume_thread(self.raw_value()) };
     }
 }
 
@@ -101,7 +101,7 @@ impl ThreadHandle {
 
 impl Drop for ThreadHandle {
     fn drop(&mut self) {
-        close_handle(self.0)
+        unsafe { close_handle(self.raw_value()) }
     }
 }
 
@@ -145,7 +145,7 @@ impl ProcessHandle {
 
 impl Drop for ProcessHandle {
     fn drop(&mut self) {
-        close_handle(self.0)
+        unsafe { close_handle(self.raw_value()) }
     }
 }
 
@@ -186,7 +186,7 @@ impl SnapshotHandle {
 
 impl Drop for SnapshotHandle {
     fn drop(&mut self) {
-        close_handle(self.0)
+        unsafe { close_handle(self.raw_value()) }
     }
 }
 
@@ -195,9 +195,13 @@ impl Display for SnapshotHandle {
         write!(f, "{}", unsafe { self.raw_value() })
     }
 }
-
+/// Checks if the handle is not `INVALID_HANDLE_VALUE` and then calls `ResumeThread`
+///
+/// # Safety
+///
+/// This function must only be called on a thread handle that is suspended.
 #[inline(always)]
-fn resume_thread(handle: usize) {
+unsafe fn resume_thread(handle: usize) {
     unsafe {
         if handle != INVALID_HANDLE_VALUE && ResumeThread(handle) == u32::MAX {
             println!(
@@ -207,9 +211,14 @@ fn resume_thread(handle: usize) {
         }
     }
 }
-
+/// Checks if the handle is not `INVALID_HANDLE_VALUE` and then calls `CloseHandle`
+///
+/// # Safety
+///
+/// This function must only be called on a valid handle. Calling this function on a handle that has been closed is undefined
+/// behaviour.
 #[inline(always)]
-fn close_handle(handle: usize) {
+unsafe fn close_handle(handle: usize) {
     unsafe {
         if handle != INVALID_HANDLE_VALUE && !CloseHandle(handle) {
             println!(

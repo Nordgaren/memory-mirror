@@ -1,6 +1,8 @@
 use crate::args::{Args, DumpType};
 use crate::handle::{ProcessHandle, SnapshotHandle};
-use crate::windows::consts::{MEM_FREE, PROCESS_QUERY_INFORMATION, PROCESS_VM_READ, TH32CS_SNAPMODULE, TH32CS_SNAPTHREAD};
+use crate::windows::consts::{
+    MEM_FREE, PROCESS_QUERY_INFORMATION, PROCESS_VM_READ, TH32CS_SNAPMODULE, TH32CS_SNAPTHREAD,
+};
 use clap::Parser;
 use pe_util::PE;
 use std::fs;
@@ -72,7 +74,8 @@ unsafe fn dump(path: &str, pid: u32) -> std::io::Result<()> {
 
     let frozen_threads = freeze_process(&snapshot, pid)?;
 
-    let process_handle = ProcessHandle::new(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, false, pid)?;
+    let process_handle =
+        ProcessHandle::new(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, false, pid)?;
 
     let modules = enumerate_modules(&process_handle, &snapshot);
     let regions = enumerate_memory_regions(&process_handle);
@@ -108,7 +111,11 @@ fn dump_module(path: &str, process: &ProcessHandle, module: &ProcessModule) -> s
     Ok(())
 }
 
-fn dump_raw_region(path: &str, process: &ProcessHandle, region: MemoryRegion) -> std::io::Result<()> {
+fn dump_raw_region(
+    path: &str,
+    process: &ProcessHandle,
+    region: MemoryRegion,
+) -> std::io::Result<()> {
     let buffer = read_memory(process, &region.range)?;
     let filename = build_filename("UNK", &region.range);
     dump_buffer(&format!("{}/{}", path, filename), buffer)?;
