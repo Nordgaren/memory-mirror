@@ -34,7 +34,7 @@ impl FrozenThreadHandle {
     }
     pub fn resume_thread(mut self) -> ThreadHandle {
         let handle = mem::replace(&mut self.0, ThreadHandle(INVALID_HANDLE_VALUE));
-        close_handle(handle.0);
+        resume_thread(handle.0);
         handle
     }
 }
