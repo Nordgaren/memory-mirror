@@ -91,7 +91,7 @@ unsafe fn dump(path: &str, pid: u32) -> std::io::Result<()> {
     for region in readable_regions.into_iter() {
         dump_raw_region(path, process_handle.raw_value(), region)?
     }
-    // Pass the Vec<FrozenThreadInfo> in as a reference, so that the threads get resumed and closed all at once after the dump.
+    // Pass the Vec<FrozenThreadInfo> in as a slice, so that the threads get resumed and closed all at once after the dump.
     process::dump_thread_context(path, &frozen_threads);
 
     Ok(())

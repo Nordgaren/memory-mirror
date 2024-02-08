@@ -201,13 +201,15 @@ pub(crate) fn read_memory(process: usize, range: &Range<usize>) -> std::io::Resu
     ))
 }
 
-pub fn dump_thread_context(path: &str, threads: &Vec<FrozenThreadInfo>) {
+pub fn dump_thread_context(path: &str, threads: &[FrozenThreadInfo]) {
     for thread in threads {
         let mut context = CONTEXT { ContextFlags: CONTEXT_ALL, ..Default::default() };
-        let success = unsafe { GetThreadContext(thread.handle.raw_value(), &mut context) };
-        if !success {
-            continue;
-        }
+        unsafe {
+            if !GetThreadContext(thread.handle.raw_value(), &mut context) {
+                continue;
+            }
+        };
+
 
         let filepath = format!("{path}/_{}_context.txt", thread.entry.th32ThreadID);
         if let Err(e) = fs::write(&filepath, format!("{context:#?}")) {

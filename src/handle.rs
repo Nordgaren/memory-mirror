@@ -31,6 +31,9 @@ impl FrozenThreadHandle {
     pub fn raw_value(&self) -> usize {
         self.0 .0
     }
+    pub fn resume_thread(self) -> ThreadHandle {
+        self.0
+    }
 }
 
 impl Drop for FrozenThreadHandle {
