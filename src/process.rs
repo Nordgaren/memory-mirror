@@ -226,7 +226,7 @@ pub fn dump_thread_context(path: &str, threads: &[FrozenThreadInfo]) {
             }
         };
 
-        let filepath = format!("{path}/_{}_context.txt", thread.entry.th32ThreadID);
+        let filepath = format!("{path}/{}_context.txt", thread.entry.th32ThreadID);
         if let Err(e) = fs::write(&filepath, format!("{context:#?}")) {
             println!("Could not write thread context to: {filepath}. Error: {e}")
         }
