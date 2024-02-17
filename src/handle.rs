@@ -11,8 +11,8 @@ pub(crate) struct FrozenThreadHandle(ThreadHandle);
 impl FrozenThreadHandle {
     /// Opens a `ThreadHandle` to a thread via thread id and access parameters and suspends the thread, returning a `FrozenThreadHandle`
     /// if successful.
-    pub fn new(access: u32, inherit: bool, thread: u32) -> std::io::Result<Self> {
-        let handle = ThreadHandle::new(access, inherit, thread)?;
+    pub fn new(access: u32, inherit: bool, thread_id: u32) -> std::io::Result<Self> {
+        let handle = ThreadHandle::new(access, inherit, thread_id)?;
         Self::from_thread_handle(handle)
     }
     /// Calls `SuspendThread` on an existing `ThreadHandle`, returning a `FrozenThreadHandle` if successful.
@@ -44,6 +44,7 @@ impl FrozenThreadHandle {
         self.0.0
     }
     /// Resumes the thread and returns the underlying `ThreadHandle`.
+    #[allow(unused)]
     pub fn resume_thread(mut self) -> ThreadHandle {
         // SAFETY: the `resume_thread` as well as the `close_handle` function that `ThreadHandle` calls will both check
         // if the handle is not `INVALID_HANDLE_VALUE` before calling the windows api function it needs to call. This way
@@ -80,7 +81,7 @@ impl ThreadHandle {
             let last_error = unsafe { GetLastError() };
             return Err(Error::new(
                 ErrorKind::Other,
-                format!("Could not open process {thread_id}. Invalid handle: {handle}. LastError: 0x{last_error:X}"),
+                format!("Could not open thread {thread_id}. Invalid handle: {handle}. LastError: 0x{last_error:X}"),
             ));
         }
 
@@ -159,14 +160,14 @@ pub(crate) struct SnapshotHandle(usize);
 
 impl SnapshotHandle {
     /// Opens a `SnapshotHandle` to a thread via process id and access parameters, returning a `SnapshotHandle` if successful.
-    pub(crate) fn new(flags: u32, process: u32) -> std::io::Result<Self> {
-        let handle = unsafe { CreateToolhelp32Snapshot(flags, process) };
+    pub(crate) fn new(flags: u32, thread: u32) -> std::io::Result<Self> {
+        let handle = unsafe { CreateToolhelp32Snapshot(flags, thread) };
 
         if handle == INVALID_HANDLE_VALUE {
             let last_error = unsafe { GetLastError() };
             return Err(Error::new(
                 ErrorKind::AddrInUse,
-                format!("Could not open snapshot for process {process}. Invalid handle: {handle}. LastError: 0x{last_error:X}"),
+                format!("Could not open snapshot for thread {thread}. Invalid handle: {handle}. LastError: 0x{last_error:X}"),
             ));
         }
 
@@ -183,7 +184,6 @@ impl SnapshotHandle {
         self.0
     }
 }
-
 impl Drop for SnapshotHandle {
     fn drop(&mut self) {
         unsafe { close_handle(self.raw_value()) }
@@ -195,7 +195,6 @@ impl Display for SnapshotHandle {
         write!(f, "{}", unsafe { self.raw_value() })
     }
 }
-
 /// Checks if the handle is not `INVALID_HANDLE_VALUE` and then calls `ResumeThread`
 ///
 /// # Safety
@@ -212,7 +211,6 @@ unsafe fn resume_thread(handle: usize) {
         }
     }
 }
-
 /// Checks if the handle is not `INVALID_HANDLE_VALUE` and then calls `CloseHandle`
 ///
 /// # Safety

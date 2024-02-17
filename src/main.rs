@@ -150,7 +150,7 @@ fn patch_section_headers(mut buffer: Vec<u8>) -> Vec<u8> {
         }
     };
 
-    let sections = pe.section_headers_mut();
+    let sections = unsafe { pe.section_headers_mut() };
     for sections in sections {
         // Since we're dumping from memory we need to correct the PointerToRawData and SizeOfRawData
         // such that analysis tools can locate the sections again.
