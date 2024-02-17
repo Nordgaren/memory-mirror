@@ -41,7 +41,7 @@ impl FrozenThreadHandle {
     /// will be dropped and call `CloseHandle`. If these functions have already been called on this handle, it could lead
     /// to undefined behaviour
     pub unsafe fn raw_value(&self) -> usize {
-        self.0.0
+        self.0 .0
     }
     /// Resumes the thread and returns the underlying `ThreadHandle`.
     #[allow(unused)]

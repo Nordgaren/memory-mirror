@@ -1,11 +1,13 @@
 use pe_util::PE;
 use std::ffi::{c_void, CStr};
-use std::io::{Error, ErrorKind};
+use std::fs::File;
+use std::io::{Error, ErrorKind, Write};
 use std::mem::size_of;
 use std::ops::Range;
 use std::{fmt, fs};
 
 use crate::handle::{FrozenThreadHandle, ProcessHandle, SnapshotHandle};
+use crate::patch_section_headers;
 use crate::windows::api::{
     GetLastError, GetThreadContext, Module32First, Module32Next, ReadProcessMemory, Thread32First,
     Thread32Next, VirtualQueryEx,
@@ -85,23 +87,31 @@ pub(crate) fn freeze_process(
     Ok(handles)
 }
 
-pub(crate) unsafe fn enumerate_modules(
+pub(crate) fn enumerate_modules(
     process: &ProcessHandle,
     snapshot: &SnapshotHandle,
-) -> Vec<ProcessModule> {
-    let snapshot = snapshot.raw_value();
+) -> std::io::Result<Vec<ProcessModule>> {
+    let snapshot = unsafe { snapshot.raw_value() };
     let mut current_entry = MODULEENTRY32::default();
 
-    if !Module32First(snapshot, &mut current_entry) {
-        panic!("Could not get first module entry");
+    unsafe {
+        if !Module32First(snapshot, &mut current_entry) {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                format!(
+                    "Could not get first module entry. GetLastError: 0x{:X}",
+                    GetLastError()
+                ),
+            ));
+        }
     }
 
     let mut results = vec![];
     loop {
         let mut name = CStr::from_bytes_until_nul(&current_entry.szModule)
-            .unwrap()
+            .map_err(|e| Error::new(ErrorKind::InvalidInput, e.to_string()))?
             .to_str()
-            .unwrap()
+            .map_err(|e| Error::new(ErrorKind::InvalidInput, e.to_string()))?
             .to_string();
 
         if name.is_empty() {
@@ -117,20 +127,21 @@ pub(crate) unsafe fn enumerate_modules(
         };
 
         // grab the size of the PE in memory, and set the range end to that.
-        let buffer =
-            read_memory(process, &process_module.range).expect("Could not read process memory.");
-        let pe = PE::from_slice_assume_mapped(&buffer[..], true);
+        let buffer = read_memory(process, &process_module.range)?;
+        let pe = unsafe { PE::from_slice_assume_mapped(&buffer[..], true) };
         process_module.range.end =
             current_entry.hModule + pe.nt_headers().optional_header().size_of_image() as usize;
 
         results.push(process_module);
 
-        if !Module32Next(snapshot, &mut current_entry) {
-            break;
+        unsafe {
+            if !Module32Next(snapshot, &mut current_entry) {
+                break;
+            }
         }
     }
 
-    results
+    Ok(results)
 }
 
 pub(crate) fn enumerate_memory_regions(process: &ProcessHandle) -> Vec<MemoryRegion> {
@@ -214,6 +225,43 @@ pub(crate) fn read_memory(
     ))
 }
 
+pub(crate) fn dump_module(
+    path: &str,
+    process: &ProcessHandle,
+    module: &ProcessModule,
+) -> std::io::Result<()> {
+    let buffer = read_memory(process, &module.range)?;
+    let buffer = patch_section_headers(buffer);
+    let filename = build_filename(module.name.as_str(), &module.range);
+    dump_buffer(&format!("{}/{}", path, filename), buffer)?;
+    Ok(())
+}
+
+pub(crate) fn dump_raw_region(
+    path: &str,
+    process: &ProcessHandle,
+    region: MemoryRegion,
+) -> std::io::Result<()> {
+    let buffer = read_memory(process, &region.range)?;
+    let filename = build_filename("UNK", &region.range);
+    dump_buffer(&format!("{}/{}", path, filename), buffer)?;
+    Ok(())
+}
+
+fn build_filename(label: &str, range: &Range<usize>) -> String {
+    format!(
+        "{:x}-{:x}-{}.dump",
+        range.start,
+        range.end - range.start,
+        label
+    )
+}
+
+fn dump_buffer(path: &str, buffer: Vec<u8>) -> std::io::Result<()> {
+    let mut file = File::create(path)?;
+    file.write_all(buffer.as_slice())?;
+    Ok(())
+}
 pub fn dump_thread_context(path: &str, threads: &[FrozenThreadInfo]) {
     for thread in threads {
         let mut context = CONTEXT {
