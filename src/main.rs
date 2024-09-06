@@ -68,7 +68,7 @@ fn dump(path: &str, pid: u32) -> std::io::Result<()> {
     let process_handle =
         ProcessHandle::new(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, false, pid)?;
 
-    let modules = process::enumerate_modules(&process_handle, &snapshot)?;
+    let modules = process::enumerate_modules(&snapshot)?;
     let regions = process::enumerate_memory_regions(&process_handle);
 
     let readable_regions = regions

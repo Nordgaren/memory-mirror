@@ -1,4 +1,3 @@
-use pe_util::PE;
 use std::ffi::{c_void, CStr};
 use std::fs::File;
 use std::io::{Error, ErrorKind, Write};
@@ -88,7 +87,6 @@ pub(crate) fn freeze_process(
 }
 
 pub(crate) fn enumerate_modules(
-    process: &ProcessHandle,
     snapshot: &SnapshotHandle,
 ) -> std::io::Result<Vec<ProcessModule>> {
     let snapshot = unsafe { snapshot.raw_value() };
@@ -118,19 +116,19 @@ pub(crate) fn enumerate_modules(
             name.push_str("UNK-MODULE")
         }
 
-        let mut process_module = ProcessModule {
+        let process_module = ProcessModule {
             name,
             range: Range {
-                start: current_entry.hModule,
-                end: current_entry.hModule + current_entry.dwSize as usize,
+                start: current_entry.modBaseAddr,
+                end: current_entry.modBaseAddr + current_entry.modBaseSize as usize,
             },
         };
 
         // grab the size of the PE in memory, and set the range end to that.
-        let buffer = read_memory(process, &process_module.range)?;
-        let pe = unsafe { PE::from_slice_assume_mapped(&buffer[..], true) };
-        process_module.range.end =
-            current_entry.hModule + pe.nt_headers().optional_header().size_of_image() as usize;
+        // let buffer = read_memory(process, &process_module.range)?;
+        // let pe = unsafe { PE::from_slice_assume_mapped(&buffer[..], true) };
+        // process_module.range.end =
+        //     current_entry.hModule + pe.nt_headers().optional_header().size_of_image() as usize;
 
         results.push(process_module);
 
