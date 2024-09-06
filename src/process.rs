@@ -1,4 +1,3 @@
-use pe_util::PE;
 use std::ffi::{c_void, CStr};
 use std::fmt;
 use std::io::{Error, ErrorKind};
@@ -149,17 +148,16 @@ pub(crate) unsafe fn enumerate_modules(process: usize, snapshot: usize) -> Vec<P
         let mut process_module = ProcessModule {
             name,
             range: Range {
-                start: current_entry.hModule,
-                end: current_entry.hModule + current_entry.dwSize as usize,
+                start: current_entry.modBaseAddr,
+                end: current_entry.modBaseAddr + current_entry.modBaseSize as usize,
             },
         };
 
         // grab the size of the PE in memory, and set the range end to that.
-        let buffer =
-            read_memory(process, &process_module.range).expect("Could not read process memory.");
-        let pe = PE::from_slice_assume_mapped(&buffer[..], true);
-        process_module.range.end =
-            current_entry.hModule + pe.nt_headers().optional_header().size_of_image() as usize;
+        // let buffer =
+        //     read_memory(process, &process_module.range).expect("Could not read process memory.");
+        // let pe = PE::from_slice_assume_mapped(&buffer[..], true);
+        // process_module.range.end = current_entry.modBaseAddr + pe.nt_headers().optional_header().size_of_image()  as usize;
 
         results.push(process_module);
 
